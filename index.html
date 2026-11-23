@@ -1,0 +1,187 @@
+
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SMOBX CLICKER</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#090909;color:white;font-family:Arial,sans-serif;text-align:center}
+header{padding:22px;background:#171717;border-bottom:1px solid #9b650e}
+.logo{font-size:29px;font-weight:900;color:#ffbd35;text-shadow:0 0 15px #ff9900}
+.subtitle{color:#aaa;font-size:12px}
+.balance{margin:22px auto;background:#1d1d1d;border:1px solid #a66c18;border-radius:16px;padding:17px;width:90%;max-width:450px}
+.balance strong{font-size:30px;color:#ffc247}
+.tabs{display:flex;justify-content:center;gap:8px;margin:15px 5px}
+button{border:0;border-radius:12px;padding:13px;background:#292929;color:white;font-weight:bold;font-size:15px}
+.tabs button.active,.mainbtn{background:linear-gradient(135deg,#ffbd35,#d66b00);color:#17100a}
+.page{display:none;padding:15px}
+.page.active{display:block}
+.mainbtn{width:210px;height:210px;border-radius:50%;font-size:65px;border:5px solid #ffe09a;box-shadow:0 0 35px #d98219;margin:25px auto;display:block}
+.mainbtn:active{transform:scale(.94)}
+.stat{color:#aaa;margin:8px}
+.card{background:#1c1c1c;border:1px solid #62451d;border-radius:15px;padding:17px;margin:12px auto;max-width:450px}
+.card h3{color:#ffc247;margin:5px}
+.card button{background:#a96a13;margin-top:10px;width:100%}
+.card button:disabled{background:#444;color:#999}
+.case{font-size:60px}
+#message{color:#ffc247;min-height:28px;margin:10px}
+.progress{height:10px;background:#333;border-radius:10px;overflow:hidden;margin:12px}
+.progress div{height:100%;background:#ffb52e;width:0%}
+</style>
+</head>
+<body>
+
+<header>
+<div class="logo">👑 SMOBX</div>
+<div class="subtitle">CLICKER • CASES • LEVELS</div>
+</header>
+
+<div class="balance">
+<div>🪙 ТВОЇ МОНЕТИ</div>
+<strong id="coins">0</strong>
+<div class="stat">⭐ Рівень: <span id="level">1</span></div>
+<div class="progress"><div id="xpbar"></div></div>
+<div class="stat">XP: <span id="xp">0</span> / <span id="nextxp">100</span></div>
+</div>
+
+<div class="tabs">
+<button class="active" onclick="showPage('click',this)">⚡ Клікер</button>
+<button onclick="showPage('cases',this)">📦 Кейси</button>
+<button onclick="showPage('shop',this)">🚀 Магазин</button>
+</div>
+
+<section class="page active" id="click">
+<h2>SMOBX CLICKER</h2>
+<p class="stat">Натискай та заробляй монети!</p>
+<button class="mainbtn" onclick="clickCoin()">👆</button>
+<h3>+<span id="power">1</span> 🪙 за клік</h3>
+<div id="message">Починай свою пригоду!</div>
+</section>
+
+<section class="page" id="cases">
+<h2>📦 МАГАЗИН КЕЙСІВ</h2>
+<p class="stat">Відкривай кейси та отримуй монети!</p>
+<div class="card">
+<div class="case">📦</div>
+<h3>BRONZE CASE</h3>
+<p>Ціна: 100 🪙</p>
+<button onclick="openCase(100,50,250)">ВІДКРИТИ</button>
+</div>
+<div class="card">
+<div class="case">🎁</div>
+<h3>GOLD CASE</h3>
+<p>Ціна: 500 🪙</p>
+<button onclick="openCase(500,250,1200)">ВІДКРИТИ</button>
+</div>
+<div class="card">
+<div class="case">👑</div>
+<h3>ROYAL CASE</h3>
+<p>Ціна: 1500 🪙</p>
+<button onclick="openCase(1500,750,4000)">ВІДКРИТИ</button>
+</div>
+<div id="caseResult" class="card">Твоя наступна нагорода чекає!</div>
+</section>
+
+<section class="page" id="shop">
+<h2>🚀 ПОКРАЩЕННЯ</h2>
+<div class="card">
+<h3>⚡ Сила кліку</h3>
+<p>Збільшуй кількість монет за клік.</p>
+<p>Рівень: <span id="upgradeLevel">1</span></p>
+<p>Ціна: <span id="upgradePrice">50</span> 🪙</p>
+<button onclick="upgrade()">ПОКРАЩИТИ</button>
+</div>
+<div class="card">
+<h3>🏆 Твій прогрес</h3>
+<p>Всього кліків: <span id="totalClicks">0</span></p>
+<p>Всього зароблено: <span id="totalEarned">0</span> 🪙</p>
+</div>
+</section>
+
+<script>
+const tg=window.Telegram?.WebApp;
+if(tg){tg.ready();tg.expand();}
+
+let data=JSON.parse(localStorage.getItem("smobx_save"))||{
+coins:0,xp:0,level:1,power:1,
+upgradeLevel:1,upgradePrice:50,
+totalClicks:0,totalEarned:0
+};
+
+function save(){
+localStorage.setItem("smobx_save",JSON.stringify(data));
+render();
+}
+
+function render(){
+document.getElementById("coins").textContent=data.coins.toLocaleString("uk-UA");
+document.getElementById("xp").textContent=data.xp;
+document.getElementById("level").textContent=data.level;
+document.getElementById("power").textContent=data.power;
+document.getElementById("upgradeLevel").textContent=data.upgradeLevel;
+document.getElementById("upgradePrice").textContent=data.upgradePrice;
+document.getElementById("totalClicks").textContent=data.totalClicks;
+document.getElementById("totalEarned").textContent=data.totalEarned;
+document.getElementById("nextxp").textContent=data.level*100;
+document.getElementById("xpbar").style.width=(data.xp/(data.level*100)*100)+"%";
+}
+
+function clickCoin(){
+data.coins+=data.power;
+data.totalEarned+=data.power;
+data.totalClicks++;
+data.xp+=2;
+checkLevel();
+save();
+}
+
+function checkLevel(){
+while(data.xp>=data.level*100){
+data.xp-=data.level*100;
+data.level++;
+document.getElementById("message").textContent="🎉 Новий рівень! Тепер ти рівень "+data.level;
+}
+}
+
+function openCase(price,min,max){
+if(data.coins<price){
+document.getElementById("caseResult").textContent="❌ Недостатньо монет!";
+return;
+}
+data.coins-=price;
+let reward=Math.floor(Math.random()*(max-min+1))+min;
+data.coins+=reward;
+data.totalEarned+=reward;
+data.xp+=10;
+checkLevel();
+document.getElementById("caseResult").innerHTML=
+"🎉 КЕЙС ВІДКРИТО!<h2>+"+reward.toLocaleString("uk-UA")+" 🪙</h2>Твоя нагорода!";
+save();
+}
+
+function upgrade(){
+if(data.coins<data.upgradePrice){
+alert("Недостатньо монет!");
+return;
+}
+data.coins-=data.upgradePrice;
+data.upgradeLevel++;
+data.power+=1;
+data.upgradePrice=Math.floor(data.upgradePrice*1.7);
+save();
+}
+
+function showPage(id,btn){
+document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
+document.querySelectorAll(".tabs button").forEach(b=>b.classList.remove("active"));
+document.getElementById(id).classList.add("active");
+btn.classList.add("active");
+}
+
+render();
+</script>
+</body>
+</html>
